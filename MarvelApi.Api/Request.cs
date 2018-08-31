@@ -50,8 +50,7 @@ namespace MarvelApi.Api
         /// <returns></returns>
         public string ToUrl(DateTime ts, string apiPublicKey, string hash, string url)
         {
-            string formattedUrl = $"{url}?ts={ts.ToString(CultureInfo.InvariantCulture)}&apikey={apiPublicKey}&hash={hash}";
-            return formattedUrl;
+            return $"{url}?ts={ts.ToString(CultureInfo.InvariantCulture)}&apikey={apiPublicKey}&hash={hash}";
         }
     }
 }
