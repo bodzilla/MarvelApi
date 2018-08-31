@@ -3,7 +3,6 @@ using System.Configuration;
 using System.Globalization;
 using System.IO;
 using System.Net;
-using System.Runtime.InteropServices;
 using Newtonsoft.Json.Linq;
 
 namespace MarvelApi.Api

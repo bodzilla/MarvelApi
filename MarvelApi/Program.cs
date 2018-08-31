@@ -32,8 +32,16 @@ namespace MarvelApi
             // Call API and get the results for the following queries.
             try
             {
-                var characters = GetTopTenMarvelCharacterIds();
+                IList<JToken> characters = GetTopTenMarvelCharacterIds();
+                IDictionary<JToken, int> charactersDict = new Dictionary<JToken, int>();
 
+                foreach (var character in characters)
+                {
+                    int total = (int)character["comics"]["available"] + (int)character["stories"]["available"];
+                    charactersDict.Add(character, total);
+                }
+
+                List<JToken> topTenCharacters = charactersDict.OrderByDescending(x => x.Value).Select(y => y.Key).Take(10).ToList();
             }
             catch (Exception ex)
             {
@@ -41,11 +49,8 @@ namespace MarvelApi
             }
         }
 
-        /// <summary>
-        /// 1A) The top 10 Marvel character IDs in an array of integers. A top character is the one with the most number of appearances on comics and stories.
-        /// </summary>
-        /// <returns>JSON object</returns>
-        private static List<JToken> GetTopTenMarvelCharacterIds()
+
+        private static IList<JToken> GetTopTenMarvelCharacterIds()
         {
             Request request = new Request();
             DateTime timeStamp = DateTime.Now;
