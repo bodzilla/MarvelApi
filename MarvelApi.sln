@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarvelApi.Security", "Marve
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarvelApi.SecurityManager", "MarvelApi.SecurityManager\MarvelApi.SecurityManager.csproj", "{312FECD7-96EF-4B91-8D08-C4A152EE620F}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarvelApi.Api", "MarvelApi.Api\MarvelApi.Api.csproj", "{F6FF2038-5E71-4AFD-8D75-AAE4B7A3916B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{312FECD7-96EF-4B91-8D08-C4A152EE620F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{312FECD7-96EF-4B91-8D08-C4A152EE620F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{312FECD7-96EF-4B91-8D08-C4A152EE620F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F6FF2038-5E71-4AFD-8D75-AAE4B7A3916B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F6FF2038-5E71-4AFD-8D75-AAE4B7A3916B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F6FF2038-5E71-4AFD-8D75-AAE4B7A3916B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F6FF2038-5E71-4AFD-8D75-AAE4B7A3916B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

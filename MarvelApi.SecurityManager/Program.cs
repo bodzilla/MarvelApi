@@ -6,18 +6,21 @@ namespace MarvelApi.SecurityManager
     internal class Program
     {
         /// <summary>
-        /// Generates an encrypted string from the original API Key.
+        /// Generates an encrypted strings from the original API keys.
         /// </summary>
         /// <param name="args"></param>
         private static void Main(string[] args)
         {
-            string encryptedApiKey = String.Empty;
+            string password = args[0];
+            string encryptedApiPublicKey = String.Empty;
+            string encryptedApiPrivateKey = String.Empty;
 
             try
             {
-                string password = args[0];
-                string unencryptedApiKey = args[1];
-                encryptedApiKey = new ApiKey().Encrypt(password, unencryptedApiKey);
+                string unencryptedApiPublicKey = args[1];
+                string unencryptedApiPrivateKey = args[2];
+                encryptedApiPublicKey = EncryptApiKey(password, unencryptedApiPublicKey);
+                encryptedApiPrivateKey = EncryptApiKey(password, unencryptedApiPrivateKey);
             }
             catch (Exception ex)
             {
@@ -27,12 +30,23 @@ namespace MarvelApi.SecurityManager
                 Environment.Exit(1);
             }
 
-            Console.WriteLine("Below is your encrypted API Key, store this in your main application configuration file.");
-            Console.WriteLine(encryptedApiKey);
+            Console.WriteLine("Below is your password:");
+            Console.WriteLine(password);
             Console.WriteLine(Environment.NewLine);
+
+            Console.WriteLine("Below is your encrypted API public key:");
+            Console.WriteLine(encryptedApiPublicKey);
+            Console.WriteLine(Environment.NewLine);
+
+            Console.WriteLine("Below is your encrypted API private key:");
+            Console.WriteLine(encryptedApiPrivateKey);
+            Console.WriteLine(Environment.NewLine);
+
             Console.WriteLine("Press any key to exit Security Manager.");
             Console.ReadKey();
             Environment.Exit(0);
         }
+
+        private static string EncryptApiKey(string password, string unencryptedApikey) => new ApiKey().Encrypt(password, unencryptedApikey);
     }
 }

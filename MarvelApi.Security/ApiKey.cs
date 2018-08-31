@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -34,6 +36,52 @@ namespace MarvelApi.Security
             byte[][] keys = GetHashKeys(password);
             string decryptedApiKey = DecryptStringFromBytes(encryptedApiKey, keys[0], keys[1]);
             return decryptedApiKey;
+        }
+
+        /// <summary>
+        /// Generate hash for request calls.
+        /// </summary>
+        /// <param name="timeStamp"></param>
+        /// <param name="apiPublicKey"></param>
+        /// <param name="apiPrivateKey"></param>
+        /// <returns></returns>
+        public string GenerateHash(DateTime timeStamp, string apiPublicKey, string apiPrivateKey)
+        {
+            byte[] tsBytes = Encoding.ASCII.GetBytes(timeStamp.ToString(CultureInfo.InvariantCulture));
+            byte[] apiPublicKeyBytes = Encoding.ASCII.GetBytes(apiPublicKey);
+            byte[] apiPrivateKeyBytes = Encoding.ASCII.GetBytes(apiPrivateKey);
+
+            // Must be in this order.
+            byte[] bytes = CombineBytes(tsBytes, apiPrivateKeyBytes, apiPublicKeyBytes);
+
+            string hash = GenerateHash(bytes);
+            return hash.ToLower();
+        }
+
+        private static string GenerateHash(byte[] data)
+        {
+            StringBuilder hash = new StringBuilder();
+
+            // Use input string to calculate MD5 hash.
+            MD5 md5 = MD5.Create();
+            byte[] hashBytes = md5.ComputeHash(data);
+
+            // Convert the byte array to hexadecimal string.
+            foreach (byte _byte in hashBytes) hash.Append(_byte.ToString("X2"));
+            return hash.ToString();
+        }
+
+        private static byte[] CombineBytes(params byte[][] arrays)
+        {
+            // Combine multiple byte arrays.
+            byte[] combinedBytes = new byte[arrays.Sum(a => a.Length)];
+            int offset = 0;
+            foreach (byte[] array in arrays)
+            {
+                Buffer.BlockCopy(array, 0, combinedBytes, offset, array.Length);
+                offset += array.Length;
+            }
+            return combinedBytes;
         }
 
         private static byte[][] GetHashKeys(string password)
