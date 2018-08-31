@@ -29,19 +29,26 @@ namespace MarvelApi
                 ErrorTerminateMessage($"Could not decrypt API keys - {ex}");
             }
 
-            // Call API and get the results for the following queries.
+            // Call API and get the results for the following queries for question 1.
             try
             {
-                IList<JToken> characters = GetTopTenMarvelCharacterIds();
+                IList<JToken> characters = GetAllMarvelCharacters();
                 IDictionary<JToken, int> charactersDict = new Dictionary<JToken, int>();
+                int totalComicsCharacters = 0;
+                int totalStoriesCharacters = 0;
 
-                foreach (var character in characters)
+                foreach (JToken character in characters)
                 {
-                    int total = (int)character["comics"]["available"] + (int)character["stories"]["available"];
-                    charactersDict.Add(character, total);
+                    int comics = (int)character["comics"]["available"];
+                    int stories = (int)character["stories"]["available"];
+
+                    charactersDict.Add(character, comics + stories);
+                    if (comics > 0) totalComicsCharacters++;
+                    if (stories > 0) totalStoriesCharacters++;
                 }
 
                 List<JToken> topTenCharacters = charactersDict.OrderByDescending(x => x.Value).Select(y => y.Key).Take(10).ToList();
+                int totalCharacters = charactersDict.Count;
             }
             catch (Exception ex)
             {
@@ -50,7 +57,7 @@ namespace MarvelApi
         }
 
 
-        private static IList<JToken> GetTopTenMarvelCharacterIds()
+        private static IList<JToken> GetAllMarvelCharacters()
         {
             Request request = new Request();
             DateTime timeStamp = DateTime.Now;
