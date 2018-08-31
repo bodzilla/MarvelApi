@@ -5,35 +5,34 @@ using System.Text;
 
 namespace MarvelApi.Security
 {
+    /// <summary>
+    /// Adapted from https://www.codeproject.com/Tips/1156169/Encrypt-Strings-with-Passwords-AES-SHA
+    /// </summary>
     public class ApiKey
     {
+        /// <summary>
+        /// Encrypts API key using a password.
+        /// </summary>
+        /// <param name="password"></param>
+        /// <param name="unencryptedApiKey"></param>
+        /// <returns></returns>
         public string Encrypt(string password, string unencryptedApiKey)
         {
-            string encryptedKey = null;
             byte[][] keys = GetHashKeys(password);
-
-            try
-            {
-                encryptedKey = EncryptStringToBytes_Aes(unencryptedApiKey, keys[0], keys[1]);
-            }
-            catch (CryptographicException) { }
-            catch (ArgumentNullException) { }
-
+            string encryptedKey = EncryptStringToBytes(unencryptedApiKey, keys[0], keys[1]);
             return encryptedKey;
         }
 
+        /// <summary>
+        /// Decrypts encrypted API key using a password.
+        /// </summary>
+        /// <param name="password"></param>
+        /// <param name="encryptedApiKey"></param>
+        /// <returns></returns>
         public string Decrypt(string password, string encryptedApiKey)
         {
-            string decryptedApiKey = null;
             byte[][] keys = GetHashKeys(password);
-
-            try
-            {
-                decryptedApiKey = DecryptStringFromBytes_Aes(encryptedApiKey, keys[0], keys[1]);
-            }
-            catch (CryptographicException) { }
-            catch (ArgumentNullException) { }
-
+            string decryptedApiKey = DecryptStringFromBytes(encryptedApiKey, keys[0], keys[1]);
             return decryptedApiKey;
         }
 
@@ -52,12 +51,8 @@ namespace MarvelApi.Security
             return result;
         }
 
-        private static string EncryptStringToBytes_Aes(string plainText, byte[] password, byte[] iv)
+        private static string EncryptStringToBytes(string plainText, byte[] password, byte[] iv)
         {
-            if (plainText == null || plainText.Length <= 0) throw new ArgumentNullException(nameof(plainText));
-            if (password == null || password.Length <= 0) throw new ArgumentNullException(nameof(password));
-            if (iv == null || iv.Length <= 0) throw new ArgumentNullException(nameof(iv));
-
             byte[] encrypted;
 
             using (AesManaged aesAlg = new AesManaged())
@@ -82,19 +77,14 @@ namespace MarvelApi.Security
             return Convert.ToBase64String(encrypted);
         }
 
-        private static string DecryptStringFromBytes_Aes(string cipherTextString, byte[] password, byte[] iv)
+        private static string DecryptStringFromBytes(string cipherTextString, byte[] password, byte[] iv)
         {
             byte[] cipherText = Convert.FromBase64String(cipherTextString);
-
-            if (cipherText == null || cipherText.Length <= 0) throw new ArgumentNullException(nameof(cipherTextString));
-            if (password == null || password.Length <= 0) throw new ArgumentNullException(nameof(password));
-            if (iv == null || iv.Length <= 0) throw new ArgumentNullException(nameof(iv));
-
             string plaintext;
 
             using (Aes aesAlg = Aes.Create())
             {
-                if (aesAlg == null) return null;
+                if (aesAlg == null) throw new ArgumentNullException();
                 aesAlg.Key = password;
                 aesAlg.IV = iv;
 
