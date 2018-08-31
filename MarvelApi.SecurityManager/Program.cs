@@ -5,7 +5,6 @@ namespace MarvelApi.SecurityManager
 {
     internal class Program
     {
-        private static ApiKey _apiKey;
         /// <summary>
         /// Generates an encrypted string from the original API Key.
         /// </summary>
@@ -16,10 +15,9 @@ namespace MarvelApi.SecurityManager
 
             try
             {
-                _apiKey = new ApiKey();
                 string password = args[0];
                 string unencryptedApiKey = args[1];
-                encryptedApiKey = _apiKey.Encrypt(password, unencryptedApiKey);
+                encryptedApiKey = new ApiKey().Encrypt(password, unencryptedApiKey);
             }
             catch (Exception ex)
             {
