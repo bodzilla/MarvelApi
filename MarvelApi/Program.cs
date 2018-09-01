@@ -5,8 +5,9 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using log4net;
-using MarvelApi.Api;
+using MarvelApi.Web;
 using MarvelApi.Security;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -38,17 +39,20 @@ namespace MarvelApi
             }
 
             // Read argument(s) and action response.
+            int characterId;
             switch (args.Length)
             {
+
                 case 2 when args[0].Equals("marvel") && args[1].Equals("characters"):
                     DisplayTopCharacters();
                     break;
-                case 2 when args[0].Equals("marvel") && args[1].Equals("powers"):
-                    DisplayTopCharacters();
-                    break;
                 case 3 when args[0].Equals("marvel") && args[1].Equals("characters"):
-                    if (!int.TryParse(args[2], out int characterId)) ShowTerminateMessage(1, "Character ID is not a valid integer.");
+                    if (!int.TryParse(args[2], out characterId)) ShowTerminateMessage(1, "Character ID is not a valid integer.");
                     DisplaySingleCharacter(characterId);
+                    break;
+                case 3 when args[0].Equals("marvel") && args[1].Equals("powers"):
+                    if (!int.TryParse(args[2], out characterId)) ShowTerminateMessage(1, "Character ID is not a valid integer.");
+                    DisplaySingleCharacterPowers(characterId);
                     break;
                 default:
                     ShowTerminateMessage(1, "Invalid argument(s) given.");
@@ -57,11 +61,53 @@ namespace MarvelApi
             ShowTerminateMessage(0);
         }
 
+        private static void DisplaySingleCharacterPowers(int characterId)
+        {
+            try
+            {
+                Api request = new Api();
+                DateTime timeStamp = DateTime.Now;
+
+                // Prepare and make request.
+                bool useCompression = bool.Parse(ConfigurationManager.AppSettings["UseCompression"]);
+                string requestString = ConfigurationManager.AppSettings["GetCharactersUrl"];
+                string hash = GenerateHash(timeStamp, _decryptedApiPublicKey, _decryptedApiPrivateKey);
+                string url = request.FormatCharactersUrl(timeStamp, _decryptedApiPublicKey, hash, requestString, characterId);
+
+                Stopwatch watch = Stopwatch.StartNew();
+                JObject response = request.GetResults(out long totalResponseSize, useCompression, url);
+                watch.Stop();
+                long totalResponseTime = watch.ElapsedMilliseconds;
+
+                // Check if request is ok.
+                int code = (int)response["code"];
+                if (code != 200) throw new InvalidOperationException(response["status"].ToString());
+
+                // Get wiki link and extract/format name.
+                string wiki = response["data"]["results"][0]["urls"].Values<JObject>().FirstOrDefault(x => x["type"].Value<string>().Equals("wiki"))?["url"].ToString();
+                string wikiUrlTemplate = ConfigurationManager.AppSettings["WikiUrlTemplate"];
+
+                Regex nameExtractRegex = new Regex(@"(.*\/)(.*)(\?.*)");
+                Regex removeNonAlphaNumeric = new Regex("[^a-zA-Z0-9-]");
+                Regex removeMultipleSpaces = new Regex("[ ]{2,}");
+                Regex fillTemplate = new Regex(@"\[.*\]");
+                string characterName = removeNonAlphaNumeric.Replace(removeMultipleSpaces.Replace(removeNonAlphaNumeric.Replace(nameExtractRegex.Replace(wiki ?? throw new InvalidOperationException(), "$2"), " ").Trim(), " "), "-").ToLower();
+                string wikiUrl = fillTemplate.Replace(wikiUrlTemplate, characterName);
+
+                // Parse into JSON.
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal("Could not get/display single character.", ex);
+                ShowTerminateMessage(1, "Could display single character.");
+            }
+        }
+
         private static void DisplaySingleCharacter(int characterId)
         {
             try
             {
-                Request request = new Request();
+                Api request = new Api();
                 DateTime timeStamp = DateTime.Now;
 
                 // Prepare and make request.
@@ -113,7 +159,7 @@ namespace MarvelApi
         {
             try
             {
-                Request request = new Request();
+                Api request = new Api();
                 DateTime timeStamp = DateTime.Now;
 
                 // Prepare and make request.

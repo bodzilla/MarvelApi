@@ -8,9 +8,9 @@ using System.Runtime.InteropServices;
 using System.Text;
 using Newtonsoft.Json.Linq;
 
-namespace MarvelApi.Api
+namespace MarvelApi.Web
 {
-    public class Request
+    public class Api
     {
         /// <summary>
         /// Make HTTP request and get result as JSON object with optional skip list and compression flag.
