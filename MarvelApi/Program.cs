@@ -34,8 +34,8 @@ namespace MarvelApi
             }
             catch (Exception ex)
             {
-                Log.Fatal("Could not decrypt API keys.", ex);
-                ShowTerminateMessage(1, "Could not decrypt API keys.");
+                Log.Fatal("Could not resolve API key(s).", ex);
+                ShowTerminateMessage(1, "Could not resolve API key(s).");
             }
 
             // Read argument(s) and action response.
