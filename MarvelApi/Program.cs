@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using MarvelApi.Api;
 using MarvelApi.Security;
@@ -29,76 +30,91 @@ namespace MarvelApi
             }
             catch (Exception ex)
             {
-                ErrorTerminateMessage($"Could not decrypt API keys - {ex}");
+                ShowTerminateMessage(1, $"Could not decrypt API keys - {ex}");
             }
 
-            // Call API and get the results for the following queries for question 1.
-            try
+            // Read argument(s) and action response.
+            switch (args.Length)
             {
-                JObject partOneJson = GetPartOneResult();
-                Console.WriteLine(partOneJson.ToString());
+                case 1 when args[0].Equals("characters"):
+                    DisplayTopCharacters();
+                    break;
+                case 1:
+                    ShowTerminateMessage(1, "Invalid argument(s) given.");
+                    break;
+                case 2:
+                    if (!args[0].Equals("characters")) ShowTerminateMessage(1, "Invalid argument(s) given.");
+                    if (!int.TryParse(args[1], out int characterId)) ShowTerminateMessage(1, "Character ID is not a valid integer.");
+                    DisplaySingleCharacter(characterId);
+                    break;
+                default:
+                    ShowTerminateMessage(1, "Invalid argument(s) given.");
+                    break;
             }
-            catch (Exception ex)
-            {
-                ErrorTerminateMessage($"Could not compute results for part 1 - {ex}");
-            }
+            ShowTerminateMessage(0);
         }
 
-        private static JObject GetPartOneResult()
+        private static void DisplaySingleCharacter(int characterId)
         {
-            Request request = new Request();
-            DateTime timeStamp = DateTime.Now;
+            throw new NotImplementedException();
+        }
 
-            // Prepare and make request.
-            int pageLimit = int.Parse(ConfigurationManager.AppSettings["PageLimit"]);
-            int resultLimit = int.Parse(ConfigurationManager.AppSettings["ResultLimit"]);
-            string requestString = ConfigurationManager.AppSettings["GetCharactersUrl"];
-            string hash = GenerateHash(timeStamp, _decryptedApiPublicKey, _decryptedApiPrivateKey);
-            string url = request.ToUrl(timeStamp, _decryptedApiPublicKey, hash, requestString);
-
-            List<JToken> characters = new List<JToken>();
-            int currentResult = 0;
-            int totalRequests = 0;
-            long totalResponseTime = 0;
-            long totalResponseSize = 0;
-
-            // Page through data and add to results.
-            for (int i = 0; i < pageLimit; i++)
+        private static void DisplayTopCharacters()
+        {
+            try
             {
-                totalRequests++;
+                Request request = new Request();
+                DateTime timeStamp = DateTime.Now;
 
-                Stopwatch watch = Stopwatch.StartNew();
-                JObject response = request.GetResult(url, resultLimit, currentResult);
-                watch.Stop();
-                totalResponseTime += watch.ElapsedMilliseconds;
+                // Prepare and make request.
+                int pageLimit = int.Parse(ConfigurationManager.AppSettings["PageLimit"]);
+                int resultLimit = int.Parse(ConfigurationManager.AppSettings["ResultLimit"]);
+                string requestString = ConfigurationManager.AppSettings["GetCharactersUrl"];
+                string hash = GenerateHash(timeStamp, _decryptedApiPublicKey, _decryptedApiPrivateKey);
+                string url = request.ToUrl(timeStamp, _decryptedApiPublicKey, hash, requestString);
 
-                totalResponseSize += Encoding.UTF8.GetByteCount(response.ToString());
-                currentResult += resultLimit;
-                IList<JToken> results = response["data"]["results"].ToList();
-                if (results.Count < 1) break; // This means we've reached the end of the results list.
+                List<JToken> characters = new List<JToken>();
+                int currentResult = 0;
+                int totalRequests = 0;
+                long totalResponseTime = 0;
+                long totalResponseSize = 0;
 
-                characters.AddRange(results);
-            }
+                // Page through data and add to results.
+                for (int i = 0; i < pageLimit; i++)
+                {
+                    totalRequests++;
 
-            IDictionary<JToken, int> charactersDict = new Dictionary<JToken, int>();
-            int totalComicsCharacters = 0;
-            int totalStoriesCharacters = 0;
+                    Stopwatch watch = Stopwatch.StartNew();
+                    JObject response = request.GetResult(url, resultLimit, currentResult);
+                    watch.Stop();
+                    totalResponseTime += watch.ElapsedMilliseconds;
 
-            foreach (JToken character in characters)
-            {
-                int comics = (int)character["comics"]["available"];
-                int stories = (int)character["stories"]["available"];
+                    totalResponseSize += Encoding.UTF8.GetByteCount(response.ToString());
+                    currentResult += resultLimit;
+                    IList<JToken> results = response["data"]["results"].ToList();
+                    if (results.Count < 1) break; // This means we've reached the end of the results list.
 
-                charactersDict.Add(character, comics + stories);
-                if (comics > 0) totalComicsCharacters++;
-                if (stories > 0) totalStoriesCharacters++;
-            }
+                    characters.AddRange(results);
+                }
 
-            List<int> topTenCharacters = charactersDict.OrderByDescending(x => x.Value).Take(10).Select(y => y.Key["id"].ToObject<int>()).ToList();
-            int totalCharacters = charactersDict.Count;
+                IDictionary<JToken, int> charactersDict = new Dictionary<JToken, int>();
+                int totalComicsCharacters = 0;
+                int totalStoriesCharacters = 0;
 
-            // Parse into JSON.
-            JObject json = JObject.Parse($@"
+                foreach (JToken character in characters)
+                {
+                    int comics = (int)character["comics"]["available"];
+                    int stories = (int)character["stories"]["available"];
+                    charactersDict.Add(character, comics + stories);
+                    if (comics > 0) totalComicsCharacters++;
+                    if (stories > 0) totalStoriesCharacters++;
+                }
+
+                List<int> topTenCharacters = charactersDict.OrderByDescending(x => x.Value).Take(10).Select(y => y.Key["id"].ToObject<int>()).ToList();
+                int totalCharacters = charactersDict.Count;
+
+                // Parse into JSON.
+                JObject json = JObject.Parse($@"
                 {{
                     ""characters"":
                             {{
@@ -117,18 +133,25 @@ namespace MarvelApi
                             }}
                 }}");
 
-            return json;
+                Console.WriteLine(json);
+            }
+            catch (Exception ex)
+            {
+                ShowTerminateMessage(1, $"Could not compute results for displaying top 10 characters - {ex}");
+            }
         }
 
         private static string GenerateHash(DateTime ts, string apiPublicKey, string apiPrivateKey) => new ApiKey().GenerateHash(ts, apiPublicKey, apiPrivateKey);
 
         private static string DecryptApiKey(string password, string encryptedApikey) => new ApiKey().Decrypt(password, encryptedApikey);
 
-        private static void ErrorTerminateMessage(string message)
+        private static void ShowTerminateMessage(int exitCode, [Optional] string message)
         {
-            Console.WriteLine(message);
+            Console.WriteLine(Environment.NewLine);
+            if (!String.IsNullOrWhiteSpace(message)) Console.WriteLine(message);
+            Console.WriteLine("Press any key to exit.");
             Console.ReadKey();
-            Environment.Exit(1);
+            Environment.Exit(exitCode);
         }
     }
 }
