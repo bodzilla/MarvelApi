@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Text.RegularExpressions;
 using log4net;
 using MarvelApi.Web;
 using MarvelApi.Security;
@@ -63,10 +62,14 @@ namespace MarvelApi
 
         private static void DisplaySingleCharacterPowers(int characterId)
         {
+            string name = String.Empty;
+
             try
             {
                 Api request = new Api();
                 DateTime timeStamp = DateTime.Now;
+                long totalResponseSize;
+                long totalResponseTime = 0;
 
                 // Prepare and make request.
                 bool useCompression = bool.Parse(ConfigurationManager.AppSettings["UseCompression"]);
@@ -74,32 +77,68 @@ namespace MarvelApi
                 string hash = GenerateHash(timeStamp, _decryptedApiPublicKey, _decryptedApiPrivateKey);
                 string url = request.FormatCharactersUrl(timeStamp, _decryptedApiPublicKey, hash, requestString, characterId);
 
-                Stopwatch watch = Stopwatch.StartNew();
-                JObject response = request.GetResults(out long totalResponseSize, useCompression, url);
-                watch.Stop();
-                long totalResponseTime = watch.ElapsedMilliseconds;
+                Stopwatch w1 = Stopwatch.StartNew();
+                JObject response = request.GetResults(out var apiRequestSize, useCompression, url);
+                w1.Stop();
+                totalResponseTime += w1.ElapsedMilliseconds;
 
                 // Check if request is ok.
                 int code = (int)response["code"];
                 if (code != 200) throw new InvalidOperationException(response["status"].ToString());
 
-                // Get wiki link and extract/format name.
-                string wiki = response["data"]["results"][0]["urls"].Values<JObject>().FirstOrDefault(x => x["type"].Value<string>().Equals("wiki"))?["url"].ToString();
-                string wikiUrlTemplate = ConfigurationManager.AppSettings["WikiUrlTemplate"];
+                IList<string> powers;
+                name = response["data"]["results"][0]["name"].ToString();
 
-                Regex nameExtractRegex = new Regex(@"(.*\/)(.*)(\?.*)");
-                Regex removeNonAlphaNumeric = new Regex("[^a-zA-Z0-9-]");
-                Regex removeMultipleSpaces = new Regex("[ ]{2,}");
-                Regex fillTemplate = new Regex(@"\[.*\]");
-                string characterName = removeNonAlphaNumeric.Replace(removeMultipleSpaces.Replace(removeNonAlphaNumeric.Replace(nameExtractRegex.Replace(wiki ?? throw new InvalidOperationException(), "$2"), " ").Trim(), " "), "-").ToLower();
-                string wikiUrl = fillTemplate.Replace(wikiUrlTemplate, characterName);
+                try
+                {
+                    // Get wiki link and extract/format name.
+                    string wikiUrl = response["data"]["results"][0]["urls"].Values<JObject>().FirstOrDefault(x => x["type"].Value<string>().Equals("wiki"))?["url"].ToString();
+
+                    Scraper scraper = new Scraper();
+
+                    Stopwatch w2 = Stopwatch.StartNew();
+                    string profileUrl = scraper.GetProfileUrl(out var wikiPageSize, wikiUrl);
+                    w2.Stop();
+                    totalResponseTime += w2.ElapsedMilliseconds;
+
+                    Stopwatch w3 = Stopwatch.StartNew();
+                    powers = scraper.GetSingleCharacterPowers(out var profilePageSize, profileUrl);
+                    w3.Stop();
+                    totalResponseTime += w3.ElapsedMilliseconds;
+
+                    totalResponseSize = apiRequestSize + wikiPageSize + profilePageSize;
+                }
+                catch (Exception ex)
+                {
+                    Log.Error($"Could not reach single character wiki for {name}.", ex);
+                    throw;
+                }
 
                 // Parse into JSON.
+                JObject json = JObject.Parse($@"
+                {{
+                    ""character"":
+                            {{
+                                ""id"": {response["data"]["results"][0]["id"]},
+                                ""name"": ""{name}"",
+                                ""powers"": {JsonConvert.SerializeObject(powers)}
+                            }},
+                    ""requests"":
+                            {{
+                                ""total"": 3,
+                                ""total_response_time"": {totalResponseTime},
+                                ""average_response_time"": {totalResponseTime / 3},
+                                ""total_response_size"": {totalResponseSize},
+                                ""average_response_size"": {totalResponseSize / 3}
+                            }}
+                }}");
+
+                Console.WriteLine(json);
             }
             catch (Exception ex)
             {
-                Log.Fatal("Could not get/display single character.", ex);
-                ShowTerminateMessage(1, "Could display single character.");
+                Log.Fatal($"Could not get/display single character powers for {name}.", ex);
+                ShowTerminateMessage(1, $"Could display single character powers for {name}.");
             }
         }
 
