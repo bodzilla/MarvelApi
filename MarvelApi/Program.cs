@@ -68,7 +68,7 @@ namespace MarvelApi
                 string url = request.FormatCharactersUrl(timeStamp, _decryptedApiPublicKey, hash, requestString, characterId);
 
                 Stopwatch watch = Stopwatch.StartNew();
-                JObject response = request.GetSingleResult(url);
+                JObject response = request.GetResults(url);
                 watch.Stop();
                 long totalResponseTime = watch.ElapsedMilliseconds;
                 int totalResponseSize = Encoding.UTF8.GetByteCount(response.ToString());
