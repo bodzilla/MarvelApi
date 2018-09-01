@@ -20,6 +20,7 @@ namespace MarvelApi.Security
         /// <returns></returns>
         public string Encrypt(string password, string unencryptedApiKey)
         {
+            if (String.IsNullOrWhiteSpace(password) || String.IsNullOrWhiteSpace(unencryptedApiKey)) throw new ArgumentException("Argument(s) is empty");
             byte[][] keys = GetHashKeys(password);
             string encryptedKey = EncryptStringToBytes(unencryptedApiKey, keys[0], keys[1]);
             return encryptedKey;
@@ -33,6 +34,7 @@ namespace MarvelApi.Security
         /// <returns></returns>
         public string Decrypt(string password, string encryptedApiKey)
         {
+            if (String.IsNullOrWhiteSpace(password) || String.IsNullOrWhiteSpace(encryptedApiKey)) throw new ArgumentException("Argument(s) is empty");
             byte[][] keys = GetHashKeys(password);
             string decryptedApiKey = DecryptStringFromBytes(encryptedApiKey, keys[0], keys[1]);
             return decryptedApiKey;
@@ -47,6 +49,7 @@ namespace MarvelApi.Security
         /// <returns></returns>
         public string GenerateHash(DateTime timeStamp, string apiPublicKey, string apiPrivateKey)
         {
+            if (String.IsNullOrWhiteSpace(apiPublicKey) || String.IsNullOrWhiteSpace(apiPrivateKey)) throw new ArgumentException("Argument(s) is empty");
             byte[] tsBytes = Encoding.ASCII.GetBytes(timeStamp.ToString(CultureInfo.InvariantCulture));
             byte[] apiPublicKeyBytes = Encoding.ASCII.GetBytes(apiPublicKey);
             byte[] apiPrivateKeyBytes = Encoding.ASCII.GetBytes(apiPrivateKey);
