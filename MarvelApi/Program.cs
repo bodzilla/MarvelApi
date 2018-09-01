@@ -5,7 +5,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Text;
 using log4net;
 using MarvelApi.Api;
 using MarvelApi.Security;
@@ -44,6 +43,9 @@ namespace MarvelApi
                 case 2 when args[0].Equals("marvel") && args[1].Equals("characters"):
                     DisplayTopCharacters();
                     break;
+                case 2 when args[0].Equals("marvel") && args[1].Equals("powers"):
+                    DisplayTopCharacters();
+                    break;
                 case 3 when args[0].Equals("marvel") && args[1].Equals("characters"):
                     if (!int.TryParse(args[2], out int characterId)) ShowTerminateMessage(1, "Character ID is not a valid integer.");
                     DisplaySingleCharacter(characterId);
@@ -63,15 +65,15 @@ namespace MarvelApi
                 DateTime timeStamp = DateTime.Now;
 
                 // Prepare and make request.
+                bool useCompression = bool.Parse(ConfigurationManager.AppSettings["UseCompression"]);
                 string requestString = ConfigurationManager.AppSettings["GetCharactersUrl"];
                 string hash = GenerateHash(timeStamp, _decryptedApiPublicKey, _decryptedApiPrivateKey);
                 string url = request.FormatCharactersUrl(timeStamp, _decryptedApiPublicKey, hash, requestString, characterId);
 
                 Stopwatch watch = Stopwatch.StartNew();
-                JObject response = request.GetResults(url);
+                JObject response = request.GetResults(out long totalResponseSize, useCompression, url);
                 watch.Stop();
                 long totalResponseTime = watch.ElapsedMilliseconds;
-                int totalResponseSize = Encoding.UTF8.GetByteCount(response.ToString());
 
                 // Check if request is ok.
                 int code = (int)response["code"];
@@ -115,6 +117,7 @@ namespace MarvelApi
                 DateTime timeStamp = DateTime.Now;
 
                 // Prepare and make request.
+                bool useCompression = bool.Parse(ConfigurationManager.AppSettings["UseCompression"]);
                 int pageLimit = int.Parse(ConfigurationManager.AppSettings["PageLimit"]);
                 int resultLimit = int.Parse(ConfigurationManager.AppSettings["ResultLimit"]);
                 string requestString = ConfigurationManager.AppSettings["GetCharactersUrl"];
@@ -131,12 +134,11 @@ namespace MarvelApi
                 for (int i = 0; i < pageLimit; i++)
                 {
                     totalRequests++;
-
                     Stopwatch watch = Stopwatch.StartNew();
-                    JObject response = request.GetResults(url, resultLimit, currentResult);
+                    JObject response = request.GetResults(out long size, useCompression, url, resultLimit, currentResult);
                     watch.Stop();
                     totalResponseTime += watch.ElapsedMilliseconds;
-                    totalResponseSize += Encoding.UTF8.GetByteCount(response.ToString());
+                    totalResponseSize += size;
                     currentResult += resultLimit;
 
                     // Check if request is ok.

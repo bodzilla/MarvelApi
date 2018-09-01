@@ -2,8 +2,10 @@
 using System.Configuration;
 using System.Globalization;
 using System.IO;
+using System.IO.Compression;
 using System.Net;
 using System.Runtime.InteropServices;
+using System.Text;
 using Newtonsoft.Json.Linq;
 
 namespace MarvelApi.Api
@@ -11,32 +13,41 @@ namespace MarvelApi.Api
     public class Request
     {
         /// <summary>
-        /// Make HTTP request and get result as JSON object with optional skip list.
+        /// Make HTTP request and get result as JSON object with optional skip list and compression flag.
         /// </summary>
+        /// <param name="size"></param>
+        /// <param name="useCompression"></param>
         /// <param name="url"></param>
         /// <param name="limit"></param>
         /// <param name="offset"></param>
         /// <returns>JSON object</returns>
-        public JObject GetResults(string url, [Optional] int? limit, [Optional] int? offset)
+        public JObject GetResults(out long size, bool useCompression, string url, [Optional] int? limit, [Optional] int? offset)
         {
+            // Apply skip list filters.
+            size = 0;
             if (limit != null && offset != null) url += $"&limit={limit}&offset={offset}";
+
             HttpWebRequest request = (HttpWebRequest)WebRequest.Create(url);
             request.Timeout = int.Parse(ConfigurationManager.AppSettings["TimeoutMilliSecs"]);
             request.ReadWriteTimeout = int.Parse(ConfigurationManager.AppSettings["TimeoutMilliSecs"]);
             request.Method = "GET";
 
+            // Allows better performance if true.
+            if (useCompression) request.Headers.Add("Accept-Encoding", "gzip");
+
             string data;
             using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
             {
-                using (Stream stream = response.GetResponseStream())
+                using (Stream stream = useCompression ? new GZipStream(response.GetResponseStream() ?? throw new InvalidOperationException(), CompressionMode.Decompress) : response.GetResponseStream())
                 {
-                    using (StreamReader reader = new StreamReader(stream ?? throw new InvalidOperationException("Stream returns null.")))
+                    using (StreamReader reader = new StreamReader(stream ?? throw new InvalidOperationException()))
                     {
                         data = reader.ReadToEnd();
                     }
                 }
             }
 
+            size = Encoding.UTF8.GetByteCount(data);
             JObject result = JObject.Parse(data);
             return result;
         }
