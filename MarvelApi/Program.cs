@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
+using log4net;
 using MarvelApi.Api;
 using MarvelApi.Security;
 using Newtonsoft.Json;
@@ -14,6 +16,8 @@ namespace MarvelApi
 {
     internal class Program
     {
+        private static readonly ILog Log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
+        private static readonly ApiKey ApiKey = new ApiKey();
         private static string _decryptedApiPublicKey;
         private static string _decryptedApiPrivateKey;
 
@@ -30,21 +34,18 @@ namespace MarvelApi
             }
             catch (Exception ex)
             {
-                ShowTerminateMessage(1, $"Could not decrypt API keys - {ex}");
+                Log.Fatal("Could not decrypt API keys.", ex);
+                ShowTerminateMessage(1, "Could not decrypt API keys.");
             }
 
             // Read argument(s) and action response.
             switch (args.Length)
             {
-                case 1 when args[0].Equals("characters"):
+                case 2 when args[0].Equals("marvel") && args[1].Equals("characters"):
                     DisplayTopCharacters();
                     break;
-                case 1:
-                    ShowTerminateMessage(1, "Invalid argument(s) given.");
-                    break;
-                case 2:
-                    if (!args[0].Equals("characters")) ShowTerminateMessage(1, "Invalid argument(s) given.");
-                    if (!int.TryParse(args[1], out int characterId)) ShowTerminateMessage(1, "Character ID is not a valid integer.");
+                case 3 when args[0].Equals("marvel") && args[1].Equals("characters"):
+                    if (!int.TryParse(args[2], out int characterId)) ShowTerminateMessage(1, "Character ID is not a valid integer.");
                     DisplaySingleCharacter(characterId);
                     break;
                 default:
@@ -56,7 +57,54 @@ namespace MarvelApi
 
         private static void DisplaySingleCharacter(int characterId)
         {
-            throw new NotImplementedException();
+            try
+            {
+                Request request = new Request();
+                DateTime timeStamp = DateTime.Now;
+
+                // Prepare and make request.
+                string requestString = ConfigurationManager.AppSettings["GetCharactersUrl"];
+                string hash = GenerateHash(timeStamp, _decryptedApiPublicKey, _decryptedApiPrivateKey);
+                string url = request.FormatCharactersUrl(timeStamp, _decryptedApiPublicKey, hash, requestString, characterId);
+
+                Stopwatch watch = Stopwatch.StartNew();
+                JObject response = request.GetSingleResult(url);
+                watch.Stop();
+                long totalResponseTime = watch.ElapsedMilliseconds;
+                int totalResponseSize = Encoding.UTF8.GetByteCount(response.ToString());
+
+                // Check if request is ok.
+                int code = (int)response["code"];
+                if (code != 200) throw new InvalidOperationException(response["status"].ToString());
+                JToken character = response["data"]["results"][0];
+
+                // Parse into JSON.
+                JObject json = JObject.Parse($@"
+                {{
+                    ""character"":
+                            {{
+                                ""id"": {character["id"]},
+                                ""name"": ""{character["name"]}"",
+                                ""description"": ""{character["description"]}"",
+                                ""thumbnail"": ""{character["thumbnail"]["path"]}.{character["thumbnail"]["extension"]}""
+                            }},
+                    ""requests"":
+                            {{
+                                ""total"": 1,
+                                ""total_response_time"": {totalResponseTime},
+                                ""average_response_time"": {totalResponseTime},
+                                ""total_response_size"": {totalResponseSize},
+                                ""average_response_size"": {totalResponseSize}
+                            }}
+                }}");
+
+                Console.WriteLine(json);
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal("Could not get/display single character.", ex);
+                ShowTerminateMessage(1, "Could display single character.");
+            }
         }
 
         private static void DisplayTopCharacters()
@@ -71,7 +119,7 @@ namespace MarvelApi
                 int resultLimit = int.Parse(ConfigurationManager.AppSettings["ResultLimit"]);
                 string requestString = ConfigurationManager.AppSettings["GetCharactersUrl"];
                 string hash = GenerateHash(timeStamp, _decryptedApiPublicKey, _decryptedApiPrivateKey);
-                string url = request.ToUrl(timeStamp, _decryptedApiPublicKey, hash, requestString);
+                string url = request.FormatCharactersUrl(timeStamp, _decryptedApiPublicKey, hash, requestString);
 
                 List<JToken> characters = new List<JToken>();
                 int currentResult = 0;
@@ -85,15 +133,18 @@ namespace MarvelApi
                     totalRequests++;
 
                     Stopwatch watch = Stopwatch.StartNew();
-                    JObject response = request.GetResult(url, resultLimit, currentResult);
+                    JObject response = request.GetResults(url, resultLimit, currentResult);
                     watch.Stop();
                     totalResponseTime += watch.ElapsedMilliseconds;
-
                     totalResponseSize += Encoding.UTF8.GetByteCount(response.ToString());
                     currentResult += resultLimit;
+
+                    // Check if request is ok.
+                    int code = (int)response["code"];
+                    if (code != 200) throw new InvalidOperationException(response["status"].ToString());
+
                     IList<JToken> results = response["data"]["results"].ToList();
                     if (results.Count < 1) break; // This means we've reached the end of the results list.
-
                     characters.AddRange(results);
                 }
 
@@ -137,13 +188,14 @@ namespace MarvelApi
             }
             catch (Exception ex)
             {
-                ShowTerminateMessage(1, $"Could not compute results for displaying top 10 characters - {ex}");
+                Log.Fatal("Could not display top ten characters.", ex);
+                ShowTerminateMessage(1, "Could not get/display top ten characters.");
             }
         }
 
-        private static string GenerateHash(DateTime ts, string apiPublicKey, string apiPrivateKey) => new ApiKey().GenerateHash(ts, apiPublicKey, apiPrivateKey);
+        private static string GenerateHash(DateTime ts, string apiPublicKey, string apiPrivateKey) => ApiKey.GenerateHash(ts, apiPublicKey, apiPrivateKey);
 
-        private static string DecryptApiKey(string password, string encryptedApikey) => new ApiKey().Decrypt(password, encryptedApikey);
+        private static string DecryptApiKey(string password, string encryptedApikey) => ApiKey.Decrypt(password, encryptedApikey);
 
         private static void ShowTerminateMessage(int exitCode, [Optional] string message)
         {
