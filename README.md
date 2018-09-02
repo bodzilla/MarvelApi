@@ -31,7 +31,7 @@ Now that you have all the access points in place, you can now build the applicat
 1) In Visual Studio, navigate to `MarvelApi` and load `MarvelApi.sln`.
 2) Right click on the solution and build the solution in `Release` mode. (Note: If the build fails, try again after a few seconds as it may take a little while to download all the relevant packages).
 3) You can now close down Visual Studio.
-4) In a shell console, navigate to `MarvelApi\MarvelApi\bin\Release`.
+4) Navigate to `MarvelApi\MarvelApi\bin\Release`.
 5) Open the configuration file `MarvelApi.exe.config`
 6) For the `Security` configurations - fill these in appropriately.
 7) Optionally, you can modify the `Web/API` configurations.
