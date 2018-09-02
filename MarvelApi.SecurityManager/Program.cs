@@ -11,12 +11,12 @@ namespace MarvelApi.SecurityManager
         /// <param name="args"></param>
         private static void Main(string[] args)
         {
-            string password = args[0];
+            string password = String.Empty;
             string encryptedApiPublicKey = String.Empty;
             string encryptedApiPrivateKey = String.Empty;
-
             try
             {
+                password = args[0];
                 string unencryptedApiPublicKey = args[1];
                 string unencryptedApiPrivateKey = args[2];
                 encryptedApiPublicKey = EncryptApiKey(password, unencryptedApiPublicKey);

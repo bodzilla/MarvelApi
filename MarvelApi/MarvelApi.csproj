@@ -64,10 +64,6 @@
       <Project>{f6ff2038-5e71-4afd-8d75-aae4b7a3916b}</Project>
       <Name>MarvelApi.Web</Name>
     </ProjectReference>
-    <ProjectReference Include="..\MarvelApi.Security\MarvelApi.Security.csproj">
-      <Project>{a6f11fcb-8c0c-4559-9058-86f95782f16c}</Project>
-      <Name>MarvelApi.Security</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

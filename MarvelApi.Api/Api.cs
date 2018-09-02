@@ -7,6 +7,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Net;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Translation.V2;
@@ -16,6 +17,13 @@ namespace MarvelApi.Web
 {
     public class Api
     {
+        /// <summary>
+        /// Translate a list of strings using Google Translate API.
+        /// </summary>
+        /// <param name="auth"></param>
+        /// <param name="languageCode"></param>
+        /// <param name="originalJson"></param>
+        /// <returns></returns>
         public IList<string> GetTranslatedFields(string auth, string languageCode, JObject originalJson)
         {
             // Translate fields.
@@ -23,6 +31,13 @@ namespace MarvelApi.Web
             return powers.Select(power => TranslateText(auth, languageCode, power)).ToList();
         }
 
+        /// <summary>
+        /// Translate text using Google's Translate API.
+        /// </summary>
+        /// <param name="auth"></param>
+        /// <param name="languageCode"></param>
+        /// <param name="text"></param>
+        /// <returns></returns>
         public string TranslateText(string auth, string languageCode, string text)
         {
             // Set up credentials.
@@ -34,7 +49,7 @@ namespace MarvelApi.Web
         }
 
         /// <summary>
-        /// Make HTTP request and get result as JSON object with optional skip list and compression flag.
+        /// Make HTTP request to Marvel Wiki and get result as JSON object with optional skip list and compression flag.
         /// </summary>
         /// <param name="size"></param>
         /// <param name="useCompression"></param>
@@ -74,7 +89,7 @@ namespace MarvelApi.Web
         }
 
         /// <summary>
-        /// Formats the request string for characters.
+        /// Formats the request string for characters for Marvel API call.
         /// </summary>
         /// <param name="ts"></param>
         /// <param name="apiPublicKey"></param>
@@ -85,6 +100,53 @@ namespace MarvelApi.Web
         public string FormatCharactersUrl(DateTime ts, string apiPublicKey, string hash, string url, [Optional] int characterId)
         {
             return characterId != 0 ? $"{url}/{characterId}?ts={ts.ToString(CultureInfo.InvariantCulture)}&apikey={apiPublicKey}&hash={hash}" : $"{url}?ts={ts.ToString(CultureInfo.InvariantCulture)}&apikey={apiPublicKey}&hash={hash}";
+        }
+
+        /// <summary>
+        /// Generates hash for Marvel API call.
+        /// </summary>
+        /// <param name="timeStamp"></param>
+        /// <param name="apiPublicKey"></param>
+        /// <param name="apiPrivateKey"></param>
+        /// <returns></returns>
+        public string GenerateHash(DateTime timeStamp, string apiPublicKey, string apiPrivateKey)
+        {
+            if (String.IsNullOrWhiteSpace(apiPublicKey) || String.IsNullOrWhiteSpace(apiPrivateKey)) throw new ArgumentException("Argument(s) is empty");
+            byte[] tsBytes = Encoding.ASCII.GetBytes(timeStamp.ToString(CultureInfo.InvariantCulture));
+            byte[] apiPublicKeyBytes = Encoding.ASCII.GetBytes(apiPublicKey);
+            byte[] apiPrivateKeyBytes = Encoding.ASCII.GetBytes(apiPrivateKey);
+
+            // Must be in this order.
+            byte[] bytes = CombineBytes(tsBytes, apiPrivateKeyBytes, apiPublicKeyBytes);
+
+            string hash = GenerateHash(bytes);
+            return hash.ToLower();
+        }
+
+        private static string GenerateHash(byte[] data)
+        {
+            StringBuilder hash = new StringBuilder();
+
+            // Use input string to calculate MD5 hash.
+            MD5 md5 = MD5.Create();
+            byte[] hashBytes = md5.ComputeHash(data);
+
+            // Convert the byte array to hexadecimal string.
+            foreach (byte _byte in hashBytes) hash.Append(_byte.ToString("X2"));
+            return hash.ToString();
+        }
+
+        private static byte[] CombineBytes(params byte[][] arrays)
+        {
+            // Combine multiple byte arrays.
+            byte[] combinedBytes = new byte[arrays.Sum(a => a.Length)];
+            int offset = 0;
+            foreach (byte[] array in arrays)
+            {
+                Buffer.BlockCopy(array, 0, combinedBytes, offset, array.Length);
+                offset += array.Length;
+            }
+            return combinedBytes;
         }
     }
 }

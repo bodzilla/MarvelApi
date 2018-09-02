@@ -9,7 +9,6 @@ using System.Runtime.InteropServices;
 using System.Text;
 using log4net;
 using MarvelApi.Web;
-using MarvelApi.Security;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
@@ -18,25 +17,28 @@ namespace MarvelApi
     internal class Program
     {
         private static readonly ILog Log = LogManager.GetLogger(MethodBase.GetCurrentMethod().DeclaringType);
-        private static readonly ApiKey ApiKey = new ApiKey();
-        private static string _decryptedApiPublicKey;
-        private static string _decryptedApiPrivateKey;
+        private static string _marvelApiPublicKey;
+        private static string _marvelApiPrivateKey;
+        private static string _googleAuthJsonPath;
 
         private static void Main(string[] args)
         {
             // Decrypt API key from config.
             try
             {
-                string password = ConfigurationManager.AppSettings["Password"];
-                string encryptedApiPublicKey = ConfigurationManager.AppSettings["EncryptedApiPublicKey"];
-                string encryptedApiPrivateKey = ConfigurationManager.AppSettings["EncryptedApiPrivateKey"];
-                _decryptedApiPublicKey = DecryptApiKey(password, encryptedApiPublicKey);
-                _decryptedApiPrivateKey = DecryptApiKey(password, encryptedApiPrivateKey);
+                _marvelApiPublicKey = ConfigurationManager.AppSettings["MarvelApiPublicKey"];
+                _marvelApiPrivateKey = ConfigurationManager.AppSettings["MarvelApiPrivateKey"];
+                _googleAuthJsonPath = ConfigurationManager.AppSettings["GoogleAuthJsonPath"];
+
+                if (String.IsNullOrWhiteSpace(_marvelApiPublicKey) || String.IsNullOrWhiteSpace(_marvelApiPrivateKey) || String.IsNullOrWhiteSpace(_googleAuthJsonPath))
+                {
+                    throw new NullReferenceException();
+                }
             }
             catch (Exception ex)
             {
-                Log.Fatal("Could not resolve API key(s).", ex);
-                ShowTerminateMessage(1, "Could not resolve API key(s).");
+                Log.Fatal("Could not retrieve API key(s).", ex);
+                ShowTerminateMessage(1, "Could not retrieve API key(s).");
             }
 
             // Read argument(s) and action response.
@@ -71,8 +73,7 @@ namespace MarvelApi
             JObject json = GetSingleCharacterPowers(characterId);
 
             Api api = new Api();
-            string googleAuthJsonPath = ConfigurationManager.AppSettings["GoogleAuthJsonPath"];
-            string auth = File.ReadAllText(googleAuthJsonPath);
+            string auth = File.ReadAllText(_googleAuthJsonPath);
 
             Stopwatch watch = Stopwatch.StartNew();
             string translatedDescription = api.TranslateText(auth, languageCode, json["character"]["description"].Value<string>());
@@ -110,8 +111,8 @@ namespace MarvelApi
                 // Prepare and make request.
                 bool useCompression = bool.Parse(ConfigurationManager.AppSettings["UseCompression"]);
                 string requestString = ConfigurationManager.AppSettings["GetCharactersUrl"];
-                string hash = GenerateHash(timeStamp, _decryptedApiPublicKey, _decryptedApiPrivateKey);
-                string url = api.FormatCharactersUrl(timeStamp, _decryptedApiPublicKey, hash, requestString, characterId);
+                string hash = api.GenerateHash(timeStamp, _marvelApiPublicKey, _marvelApiPrivateKey);
+                string url = api.FormatCharactersUrl(timeStamp, _marvelApiPublicKey, hash, requestString, characterId);
 
                 Stopwatch w1 = Stopwatch.StartNew();
                 JObject character = api.GetResults(out var apiRequestSize, useCompression, url);
@@ -189,8 +190,8 @@ namespace MarvelApi
                 // Prepare and make request.
                 bool useCompression = bool.Parse(ConfigurationManager.AppSettings["UseCompression"]);
                 string requestString = ConfigurationManager.AppSettings["GetCharactersUrl"];
-                string hash = GenerateHash(timeStamp, _decryptedApiPublicKey, _decryptedApiPrivateKey);
-                string url = api.FormatCharactersUrl(timeStamp, _decryptedApiPublicKey, hash, requestString, characterId);
+                string hash = api.GenerateHash(timeStamp, _marvelApiPublicKey, _marvelApiPrivateKey);
+                string url = api.FormatCharactersUrl(timeStamp, _marvelApiPublicKey, hash, requestString, characterId);
 
                 Stopwatch watch = Stopwatch.StartNew();
                 JObject response = api.GetResults(out long totalResponseSize, useCompression, url);
@@ -243,8 +244,8 @@ namespace MarvelApi
                 int pageLimit = int.Parse(ConfigurationManager.AppSettings["PageLimit"]);
                 int resultLimit = int.Parse(ConfigurationManager.AppSettings["ResultLimit"]);
                 string requestString = ConfigurationManager.AppSettings["GetCharactersUrl"];
-                string hash = GenerateHash(timeStamp, _decryptedApiPublicKey, _decryptedApiPrivateKey);
-                string url = api.FormatCharactersUrl(timeStamp, _decryptedApiPublicKey, hash, requestString);
+                string hash = api.GenerateHash(timeStamp, _marvelApiPublicKey, _marvelApiPrivateKey);
+                string url = api.FormatCharactersUrl(timeStamp, _marvelApiPublicKey, hash, requestString);
 
                 List<JToken> characters = new List<JToken>();
                 int currentResult = 0;
@@ -316,10 +317,6 @@ namespace MarvelApi
                 ShowTerminateMessage(1, "Could not get/display top ten characters.");
             }
         }
-
-        private static string GenerateHash(DateTime ts, string apiPublicKey, string apiPrivateKey) => ApiKey.GenerateHash(ts, apiPublicKey, apiPrivateKey);
-
-        private static string DecryptApiKey(string password, string encryptedApikey) => ApiKey.Decrypt(password, encryptedApikey);
 
         private static void ShowTerminateMessage(int exitCode, [Optional] string message)
         {
