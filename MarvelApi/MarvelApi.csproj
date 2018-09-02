@@ -53,14 +53,18 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config" />
+    <None Include="App.config">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="log4net.config">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Include="packages.config" />
+    <None Include="packages.config">
+      <SubType>Designer</SubType>
+    </None>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\MarvelApi.Api\MarvelApi.Web.csproj">
+    <ProjectReference Include="..\MarvelApi.Web\MarvelApi.Web.csproj">
       <Project>{f6ff2038-5e71-4afd-8d75-aae4b7a3916b}</Project>
       <Name>MarvelApi.Web</Name>
     </ProjectReference>

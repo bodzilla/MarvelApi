@@ -5,7 +5,7 @@ VisualStudioVersion = 15.0.27703.2035
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarvelApi", "MarvelApi\MarvelApi.csproj", "{18C766A5-4ACE-4A59-A981-D406F72DE4DB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarvelApi.Web", "MarvelApi.Api\MarvelApi.Web.csproj", "{F6FF2038-5E71-4AFD-8D75-AAE4B7A3916B}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MarvelApi.Web", "MarvelApi.Web\MarvelApi.Web.csproj", "{F6FF2038-5E71-4AFD-8D75-AAE4B7A3916B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
