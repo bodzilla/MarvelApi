@@ -52,7 +52,7 @@ namespace MarvelApi
                     break;
                 case 3 when args[0].Equals("marvel") && args[1].Equals("powers"):
                     if (!int.TryParse(args[2], out characterId)) ShowTerminateMessage(1, "Character ID is not a valid integer.");
-                    JObject json = DisplaySingleCharacterPowers(characterId);
+                    JObject json = GetSingleCharacterPowers(characterId);
                     Console.WriteLine(json);
                     break;
                 case 4 when args[0].Equals("marvel") && args[1].Equals("powers"):
@@ -68,7 +68,7 @@ namespace MarvelApi
 
         private static void DisplayTranslatedSingleCharacterPowers(int characterId, string languageCode)
         {
-            JObject json = DisplaySingleCharacterPowers(characterId);
+            JObject json = GetSingleCharacterPowers(characterId);
 
             Api api = new Api();
             string googleAuthJsonPath = ConfigurationManager.AppSettings["GoogleAuthJsonPath"];
@@ -92,7 +92,7 @@ namespace MarvelApi
             Console.WriteLine(json);
         }
 
-        public static JObject DisplaySingleCharacterPowers(int characterId)
+        public static JObject GetSingleCharacterPowers(int characterId)
         {
             JObject json = new JObject();
             string name = String.Empty;
