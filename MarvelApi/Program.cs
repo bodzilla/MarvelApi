@@ -320,10 +320,7 @@ namespace MarvelApi
 
         private static void ShowTerminateMessage(int exitCode, [Optional] string message)
         {
-            Console.WriteLine(Environment.NewLine);
             if (!String.IsNullOrWhiteSpace(message)) Console.WriteLine(message);
-            Console.WriteLine("Press any key to exit.");
-            Console.ReadKey();
             Environment.Exit(exitCode);
         }
     }
