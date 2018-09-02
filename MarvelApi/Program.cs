@@ -79,12 +79,15 @@ namespace MarvelApi
             IList<string> translatedPowers = api.GetTranslatedFields(auth, languageCode, json);
             watch.Stop();
             long totalResponseTime = watch.ElapsedMilliseconds;
-            long totalResponseSize = Encoding.UTF8.GetByteCount(translatedPowers.ToString());
+            long totalResponseSize = Encoding.UTF8.GetByteCount(translatedDescription) + Encoding.UTF8.GetByteCount(translatedPowers.ToString());
 
             // Update JSON.
             json["character"]["description"] = JToken.FromObject(translatedDescription);
             json["character"]["powers"] = JToken.FromObject(translatedPowers);
-            json["requests"]["total"] = json["requests"]["total"].Value<int>() + translatedPowers.Count;
+
+            // Total API calls + web requests + translate requests.
+            json["requests"]["total"] = json["requests"]["total"].Value<int>() + translatedPowers.Count + 1;
+
             json["requests"]["total_response_time"] = json["requests"]["total_response_time"].Value<long>() + totalResponseTime;
             json["requests"]["average_response_time"] = json["requests"]["total_response_time"].Value<long>() / json["requests"]["total"].Value<int>();
             json["requests"]["total_response_size"] = json["requests"]["total_response_size"].Value<long>() + totalResponseSize;
