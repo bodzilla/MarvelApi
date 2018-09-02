@@ -111,21 +111,21 @@ namespace MarvelApi
                 string url = api.FormatCharactersUrl(timeStamp, _decryptedApiPublicKey, hash, requestString, characterId);
 
                 Stopwatch w1 = Stopwatch.StartNew();
-                JObject response = api.GetResults(out var apiRequestSize, useCompression, url);
+                JObject character = api.GetResults(out var apiRequestSize, useCompression, url);
                 w1.Stop();
                 totalResponseTime += w1.ElapsedMilliseconds;
 
                 // Check if request is ok.
-                int code = (int)response["code"];
-                if (code != 200) throw new InvalidOperationException(response["status"].ToString());
+                int code = (int)character["code"];
+                if (code != 200) throw new InvalidOperationException(character["status"].ToString());
 
                 IList<string> powers;
-                name = response["data"]["results"][0]["name"].ToString();
+                name = character["data"]["results"][0]["name"].ToString();
 
                 try
                 {
                     // Get wiki link and extract/format name.
-                    string wikiUrl = response["data"]["results"][0]["urls"].Values<JObject>().FirstOrDefault(x => x["type"].Value<string>().Equals("wiki"))?["url"].ToString();
+                    string wikiUrl = character["data"]["results"][0]["urls"].Values<JObject>().FirstOrDefault(x => x["type"].Value<string>().Equals("wiki"))?["url"].ToString();
 
                     Scraper scraper = new Scraper();
 
@@ -152,10 +152,11 @@ namespace MarvelApi
                 {{
                     ""character"":
                             {{
-                                ""id"": {response["data"]["results"][0]["id"]},
+                                ""id"": {character["data"]["results"][0]["id"]},
                                 ""name"": ""{name}"",
-                                ""description"": ""{response["data"]["results"][0]["description"]}"",
-                                ""powers"": {JsonConvert.SerializeObject(powers)}
+                                ""description"": ""{character["data"]["results"][0]["description"]}"",
+                                ""powers"": {JsonConvert.SerializeObject(powers)},
+                                ""thumbnail"": ""{character["data"]["results"][0]["thumbnail"]["path"]}.{character["data"]["results"][0]["thumbnail"]["extension"]}""
                             }},
                     ""requests"":
                             {{
@@ -170,7 +171,7 @@ namespace MarvelApi
             catch (Exception ex)
             {
                 Log.Fatal($"Could not get/display single character powers for {name}.", ex);
-                ShowTerminateMessage(1, $"Could display single character powers for {name}.");
+                ShowTerminateMessage(1, $"Could not get/display single character powers for {name}.");
             }
             return json;
         }
