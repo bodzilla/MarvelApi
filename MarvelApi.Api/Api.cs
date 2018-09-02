@@ -1,17 +1,38 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Configuration;
 using System.Globalization;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
+using Google.Apis.Auth.OAuth2;
+using Google.Cloud.Translation.V2;
 using Newtonsoft.Json.Linq;
 
 namespace MarvelApi.Web
 {
     public class Api
     {
+        public IList<string> GetTranslatedFields(string auth, string languageCode, JObject originalJson)
+        {
+            // Translate fields.
+            IList<string> powers = originalJson["character"]["powers"].Values<string>().ToList();
+            return powers.Select(power => TranslateText(auth, languageCode, power)).ToList();
+        }
+
+        public string TranslateText(string auth, string languageCode, string text)
+        {
+            // Set up credentials.
+            GoogleCredential credential = GoogleCredential.FromJson(auth);
+            TranslationClient translationClient = TranslationClient.Create(credential);
+
+            // Translate field.
+            return translationClient.TranslateText(text, languageCode).TranslatedText;
+        }
+
         /// <summary>
         /// Make HTTP request and get result as JSON object with optional skip list and compression flag.
         /// </summary>

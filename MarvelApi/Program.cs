@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using System.Configuration;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text;
 using log4net;
 using MarvelApi.Web;
 using MarvelApi.Security;
@@ -41,7 +43,6 @@ namespace MarvelApi
             int characterId;
             switch (args.Length)
             {
-
                 case 2 when args[0].Equals("marvel") && args[1].Equals("characters"):
                     DisplayTopCharacters();
                     break;
@@ -51,7 +52,12 @@ namespace MarvelApi
                     break;
                 case 3 when args[0].Equals("marvel") && args[1].Equals("powers"):
                     if (!int.TryParse(args[2], out characterId)) ShowTerminateMessage(1, "Character ID is not a valid integer.");
-                    DisplaySingleCharacterPowers(characterId);
+                    JObject json = DisplaySingleCharacterPowers(characterId);
+                    Console.WriteLine(json);
+                    break;
+                case 4 when args[0].Equals("marvel") && args[1].Equals("powers"):
+                    if (!int.TryParse(args[2], out characterId)) ShowTerminateMessage(1, "Character ID is not a valid integer.");
+                    DisplayTranslatedSingleCharacterPowers(characterId, args[3]);
                     break;
                 default:
                     ShowTerminateMessage(1, "Invalid argument(s) given.");
@@ -60,13 +66,40 @@ namespace MarvelApi
             ShowTerminateMessage(0);
         }
 
-        private static void DisplaySingleCharacterPowers(int characterId)
+        private static void DisplayTranslatedSingleCharacterPowers(int characterId, string languageCode)
         {
+            JObject json = DisplaySingleCharacterPowers(characterId);
+
+            Api api = new Api();
+            string googleAuthJsonPath = ConfigurationManager.AppSettings["GoogleAuthJsonPath"];
+            string auth = File.ReadAllText(googleAuthJsonPath);
+
+            Stopwatch watch = Stopwatch.StartNew();
+            string translatedDescription = api.TranslateText(auth, languageCode, json["character"]["description"].Value<string>());
+            IList<string> translatedPowers = api.GetTranslatedFields(auth, languageCode, json);
+            watch.Stop();
+            long totalResponseTime = watch.ElapsedMilliseconds;
+            long totalResponseSize = Encoding.UTF8.GetByteCount(translatedPowers.ToString());
+
+            // Update JSON.
+            json["character"]["description"] = JToken.FromObject(translatedDescription);
+            json["character"]["powers"] = JToken.FromObject(translatedPowers);
+            json["requests"]["total"] = json["requests"]["total"].Value<int>() + translatedPowers.Count;
+            json["requests"]["total_response_time"] = json["requests"]["total_response_time"].Value<long>() + totalResponseTime;
+            json["requests"]["average_response_time"] = json["requests"]["total_response_time"].Value<long>() / json["requests"]["total"].Value<int>();
+            json["requests"]["total_response_size"] = json["requests"]["total_response_size"].Value<long>() + totalResponseSize;
+            json["requests"]["average_response_size"] = json["requests"]["total_response_size"].Value<long>() / json["requests"]["total"].Value<int>();
+            Console.WriteLine(json);
+        }
+
+        public static JObject DisplaySingleCharacterPowers(int characterId)
+        {
+            JObject json = new JObject();
             string name = String.Empty;
 
             try
             {
-                Api request = new Api();
+                Api api = new Api();
                 DateTime timeStamp = DateTime.Now;
                 long totalResponseSize;
                 long totalResponseTime = 0;
@@ -75,10 +108,10 @@ namespace MarvelApi
                 bool useCompression = bool.Parse(ConfigurationManager.AppSettings["UseCompression"]);
                 string requestString = ConfigurationManager.AppSettings["GetCharactersUrl"];
                 string hash = GenerateHash(timeStamp, _decryptedApiPublicKey, _decryptedApiPrivateKey);
-                string url = request.FormatCharactersUrl(timeStamp, _decryptedApiPublicKey, hash, requestString, characterId);
+                string url = api.FormatCharactersUrl(timeStamp, _decryptedApiPublicKey, hash, requestString, characterId);
 
                 Stopwatch w1 = Stopwatch.StartNew();
-                JObject response = request.GetResults(out var apiRequestSize, useCompression, url);
+                JObject response = api.GetResults(out var apiRequestSize, useCompression, url);
                 w1.Stop();
                 totalResponseTime += w1.ElapsedMilliseconds;
 
@@ -115,12 +148,13 @@ namespace MarvelApi
                 }
 
                 // Parse into JSON.
-                JObject json = JObject.Parse($@"
+                json = JObject.Parse($@"
                 {{
                     ""character"":
                             {{
                                 ""id"": {response["data"]["results"][0]["id"]},
                                 ""name"": ""{name}"",
+                                ""description"": ""{response["data"]["results"][0]["description"]}"",
                                 ""powers"": {JsonConvert.SerializeObject(powers)}
                             }},
                     ""requests"":
@@ -132,31 +166,30 @@ namespace MarvelApi
                                 ""average_response_size"": {totalResponseSize / 3}
                             }}
                 }}");
-
-                Console.WriteLine(json);
             }
             catch (Exception ex)
             {
                 Log.Fatal($"Could not get/display single character powers for {name}.", ex);
                 ShowTerminateMessage(1, $"Could display single character powers for {name}.");
             }
+            return json;
         }
 
         private static void DisplaySingleCharacter(int characterId)
         {
             try
             {
-                Api request = new Api();
+                Api api = new Api();
                 DateTime timeStamp = DateTime.Now;
 
                 // Prepare and make request.
                 bool useCompression = bool.Parse(ConfigurationManager.AppSettings["UseCompression"]);
                 string requestString = ConfigurationManager.AppSettings["GetCharactersUrl"];
                 string hash = GenerateHash(timeStamp, _decryptedApiPublicKey, _decryptedApiPrivateKey);
-                string url = request.FormatCharactersUrl(timeStamp, _decryptedApiPublicKey, hash, requestString, characterId);
+                string url = api.FormatCharactersUrl(timeStamp, _decryptedApiPublicKey, hash, requestString, characterId);
 
                 Stopwatch watch = Stopwatch.StartNew();
-                JObject response = request.GetResults(out long totalResponseSize, useCompression, url);
+                JObject response = api.GetResults(out long totalResponseSize, useCompression, url);
                 watch.Stop();
                 long totalResponseTime = watch.ElapsedMilliseconds;
 
@@ -198,7 +231,7 @@ namespace MarvelApi
         {
             try
             {
-                Api request = new Api();
+                Api api = new Api();
                 DateTime timeStamp = DateTime.Now;
 
                 // Prepare and make request.
@@ -207,7 +240,7 @@ namespace MarvelApi
                 int resultLimit = int.Parse(ConfigurationManager.AppSettings["ResultLimit"]);
                 string requestString = ConfigurationManager.AppSettings["GetCharactersUrl"];
                 string hash = GenerateHash(timeStamp, _decryptedApiPublicKey, _decryptedApiPrivateKey);
-                string url = request.FormatCharactersUrl(timeStamp, _decryptedApiPublicKey, hash, requestString);
+                string url = api.FormatCharactersUrl(timeStamp, _decryptedApiPublicKey, hash, requestString);
 
                 List<JToken> characters = new List<JToken>();
                 int currentResult = 0;
@@ -220,7 +253,7 @@ namespace MarvelApi
                 {
                     totalRequests++;
                     Stopwatch watch = Stopwatch.StartNew();
-                    JObject response = request.GetResults(out long size, useCompression, url, resultLimit, currentResult);
+                    JObject response = api.GetResults(out long size, useCompression, url, resultLimit, currentResult);
                     watch.Stop();
                     totalResponseTime += watch.ElapsedMilliseconds;
                     totalResponseSize += size;

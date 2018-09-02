@@ -31,7 +31,6 @@ namespace MarvelApi.Web
             string wikiHtml = MakeRequest(out size, wikiUrl);
             wikiPage.LoadHtml(wikiHtml);
 
-            // Get link for profile page.
             string profileLink = wikiPage.DocumentNode.SelectSingleNode(@"//*[@id=""masthead-1""]/div/div[2]/div/a[2]").Attributes["href"].Value.Trim();
             string profileUrl = profileLink.Insert(0, "https://www.marvel.com");
             return profileUrl;
