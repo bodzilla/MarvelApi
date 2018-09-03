@@ -8,7 +8,9 @@ the most number of appearances on comics and stories.
 - Get details of a single Marvel character's powers scraped from Marvel's Wiki, this also includes general character details using Marvel's API.
 - Get a translation of the single Marvel character's details using Google's Translate API.
 - All objects return some analytics regarding the requests made.
-- Errors are logged to a text file with full stack traces.
+- Able to use gzip compression to improve performance.
+- Able to cache results to improve performance.
+- Warnings and errors are logged to a text file with full stack traces.
 
 ## Setting up dependencies
 ### Marvel API
@@ -45,3 +47,8 @@ Argument | Output
 `marvel characters {characterId}` | Returns general details about a single Marvel character using Marvel's API given their character ID.
 `marvel powers {characterId}` | Returns details of a single Marvel character's powers scraped from Marvel's Wiki, this also includes general character details using Marvel's API given the character ID.
 `marvel powers {characterId} {languageCode}` | Returns a translated version of the single Marvel character's details using Google's Translate API given the character ID. The language code is in ISO-639-1 format. A full list can be found at: https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes
+
+## Limitations
+- Error logs do not include invalid arguments as these are displayed on the console directly.
+- Getting single character responses do not work for characters classed as teams, such as the X-Men.
+- Some text may not translate to desired language due to limitations on Google's API to interpret certain words if they are connected, such as "Spider-Sense".
