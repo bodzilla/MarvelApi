@@ -373,9 +373,12 @@ namespace MarvelApi
                     characters: {JToken.FromObject(characters)}
                 }}");
 
-                string path = $@"{AppDomain.CurrentDomain.BaseDirectory}\Resources\TopTenCharactersJson-{page}.json";
-                if (File.Exists(path)) File.Delete(path);
-                File.AppendAllText(path, json.ToString());
+                string path = $@"{AppDomain.CurrentDomain.BaseDirectory}\Resources";
+                string file = $"TopTenCharactersJson-{page}.json";
+                string fullPath = $@"{path}\{file}";
+                if (!Directory.Exists(path)) Directory.CreateDirectory(path);
+                if (File.Exists(fullPath)) File.Delete(fullPath);
+                File.AppendAllText(fullPath, json.ToString());
             }
             catch (ConfigurationErrorsException ex)
             {
@@ -388,9 +391,12 @@ namespace MarvelApi
         {
             try
             {
-                string path = $@"{AppDomain.CurrentDomain.BaseDirectory}\Resources\TopTenCharactersEtags.txt";
-                if (File.Exists(path)) File.Delete(path);
-                File.WriteAllLines(path, eTags);
+                string path = $@"{AppDomain.CurrentDomain.BaseDirectory}\Resources";
+                string file = "TopTenCharactersEtags.txt";
+                string fullPath = $@"{path}\{file}";
+                if (!Directory.Exists(path)) Directory.CreateDirectory(path);
+                if (File.Exists(fullPath)) File.Delete(fullPath);
+                File.WriteAllLines(fullPath, eTags);
             }
             catch (ConfigurationErrorsException ex)
             {
