@@ -3,10 +3,10 @@
 This project can be found at: https://github.com/bodzilla/MarvelApi
 
 This is a .NET console application which has the following functionalities:
-- Get the ids of the top 10 Marvel characters using Marvel's API. A top character is one with
+- Returns the ids of the top 10 Marvel characters using Marvel's API. A top character is one with
 the most number of appearances on comics and stories.
-- Get details of a single Marvel character's powers scraped from Marvel's Wiki, this also includes general character details using Marvel's API.
-- Get a translation of the single Marvel character's details using Google's Translate API.
+- Returns details of a single Marvel character's powers scraped from Marvel's Wiki, this also includes general character details using Marvel's API.
+- Returns a translation of the single Marvel character's details using Google's Translate API.
 - All objects return some analytics regarding the requests made.
 - Able to use gzip compression to improve performance.
 - Able to cache results to improve performance.
@@ -41,12 +41,12 @@ Now that you have all the access points in place, you can now build the applicat
 ## Running the application
 Finally, you can run the application via a shell console. To run, simply run the program `.\MonzoApi.exe` followed by any of the below arguments in lower case:
 
-Argument | Output 
---- | --- 
-`marvel characters` | Returns the ids of the top 10 Marvel characters using Marvel's API as well as total characters in the Marvel universe and total characters in comics and stories. A top character is one with the most number of appearances on comics and stories.
-`marvel characters {characterId}` | Returns general details about a single Marvel character using Marvel's API given their character ID.
-`marvel powers {characterId}` | Returns details of a single Marvel character's powers scraped from Marvel's Wiki, this also includes general character details using Marvel's API given the character ID.
-`marvel powers {characterId} {languageCode}` | Returns a translated version of the single Marvel character's details using Google's Translate API given the character ID. The language code is in ISO-639-1 format. A full list can be found at: https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes
+Argument | Output | Format
+--- | --- | ---
+`marvel characters` | Returns the ids of the top 10 Marvel characters using Marvel's API as well as total characters in the Marvel universe and total characters in comics and stories. A top character is one with the most number of appearances on comics and stories. (Note: if `UseEtags` setting is set to `true`, the initial call may take a while to return the request, but subsequent calls will be faster as this will use caching). | JSON
+`marvel characters {characterId}` | Returns general details about a single Marvel character using Marvel's API given their character ID. | JSON
+`marvel powers {characterId}` | Returns details of a single Marvel character's powers scraped from Marvel's Wiki, this also includes general character details using Marvel's API given the character ID. | JSON
+`marvel powers {characterId} {languageCode}` | Returns a translated version of the single Marvel character's details using Google's Translate API given the character ID. The language code is in ISO-639-1 format. A full list can be found at: https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes | JSON
 
 ## Limitations
 - Marvel's API can only be requested 3000 times a day due to limitations on free developer accounts.
