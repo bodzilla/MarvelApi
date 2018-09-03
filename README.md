@@ -49,6 +49,8 @@ Argument | Output
 `marvel powers {characterId} {languageCode}` | Returns a translated version of the single Marvel character's details using Google's Translate API given the character ID. The language code is in ISO-639-1 format. A full list can be found at: https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes
 
 ## Limitations
-- Error logs do not include invalid arguments as these are displayed on the console directly.
+- Marvel's API can only be requested 3000 times a day due to limitations on free developer accounts.
+- Be aware that every Google Translate API call will use your free credit - keep an eye on this.
 - Getting single character responses do not work for characters classed as teams, such as the X-Men.
 - Some text may not translate to desired language due to limitations on Google's API to interpret certain words if they are connected, such as "Spider-Sense".
+- Error logs do not include invalid arguments as these are displayed on the console directly.
