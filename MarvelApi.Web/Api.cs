@@ -49,15 +49,16 @@ namespace MarvelApi.Web
         }
 
         /// <summary>
-        /// Make HTTP request to Marvel Wiki and get result as JSON object with optional skip list and compression flag.
+        /// Make HTTP request to Marvel Wiki and get result as JSON object with optional skip list, compression flag and etags.
         /// </summary>
         /// <param name="size"></param>
         /// <param name="useCompression"></param>
         /// <param name="url"></param>
         /// <param name="limit"></param>
         /// <param name="offset"></param>
+        /// <param name="eTag"></param>
         /// <returns>JSON object</returns>
-        public JObject GetResults(out long size, bool useCompression, string url, [Optional] int? limit, [Optional] int? offset)
+        public JObject GetResults(out long size, bool useCompression, string url, [Optional] int? limit, [Optional] int? offset, [Optional] string eTag)
         {
             // Apply skip list filters.
             size = 0;
@@ -69,18 +70,30 @@ namespace MarvelApi.Web
             request.Method = "GET";
 
             // Allows better performance if true.
+            if (!String.IsNullOrWhiteSpace(eTag)) request.Headers.Add("If-None-Match", eTag);
             if (useCompression) request.Headers.Add("Accept-Encoding", "gzip");
 
-            string data;
-            using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
+            string data = String.Empty;
+            try
             {
-                using (Stream stream = useCompression ? new GZipStream(response.GetResponseStream() ?? throw new InvalidOperationException(), CompressionMode.Decompress) : response.GetResponseStream())
+                using (HttpWebResponse response = (HttpWebResponse)request.GetResponse())
                 {
-                    using (StreamReader reader = new StreamReader(stream ?? throw new InvalidOperationException()))
+                    using (Stream stream = useCompression
+                        ? new GZipStream(response.GetResponseStream() ?? throw new InvalidOperationException(),
+                            CompressionMode.Decompress)
+                        : response.GetResponseStream())
                     {
-                        data = reader.ReadToEnd();
+                        using (StreamReader reader = new StreamReader(stream ?? throw new InvalidOperationException()))
+                        {
+                            data = reader.ReadToEnd();
+                        }
                     }
                 }
+            }
+            catch (WebException ex)
+            {
+                if (ex.Response == null || ex.Status != WebExceptionStatus.ProtocolError || !ex.Message.Contains("304")) throw;
+                return null;
             }
 
             size = Encoding.UTF8.GetByteCount(data);

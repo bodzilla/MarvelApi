@@ -46,7 +46,7 @@ namespace MarvelApi
             switch (args.Length)
             {
                 case 2 when args[0].Equals("marvel") && args[1].Equals("characters"):
-                    DisplayTopCharacters();
+                    DisplayTopTenCharacters();
                     break;
                 case 3 when args[0].Equals("marvel") && args[1].Equals("characters"):
                     if (!int.TryParse(args[2], out characterId)) ShowTerminateMessage(1, "Character ID is not a valid integer.");
@@ -232,15 +232,23 @@ namespace MarvelApi
             }
         }
 
-        private static void DisplayTopCharacters()
+        private static void DisplayTopTenCharacters()
         {
             try
             {
-                Api api = new Api();
-                DateTime timeStamp = DateTime.Now;
+                // Get settings.
+                List<string> eTags = new List<string>();
+                bool useCompression = bool.Parse(ConfigurationManager.AppSettings["UseCompression"]);
+                bool useEtags = bool.Parse(ConfigurationManager.AppSettings["UseEtags"]);
+                if (useEtags)
+                {
+                    string path = $@"{AppDomain.CurrentDomain.BaseDirectory}\Resources\TopTenCharactersEtags.txt";
+                    if (File.Exists(path)) eTags.AddRange(File.ReadAllLines(path));
+                }
 
                 // Prepare and make request.
-                bool useCompression = bool.Parse(ConfigurationManager.AppSettings["UseCompression"]);
+                Api api = new Api();
+                DateTime timeStamp = DateTime.Now;
                 int pageLimit = int.Parse(ConfigurationManager.AppSettings["PageLimit"]);
                 int resultLimit = int.Parse(ConfigurationManager.AppSettings["ResultLimit"]);
                 string requestString = ConfigurationManager.AppSettings["GetCharactersUrl"];
@@ -256,21 +264,37 @@ namespace MarvelApi
                 // Page through data and add to results.
                 for (int i = 0; i < pageLimit; i++)
                 {
+                    string eTag = String.Empty;
+                    if (useEtags && eTags.ElementAtOrDefault(i) != null) eTag = eTags[i];
+
                     totalRequests++;
                     Stopwatch watch = Stopwatch.StartNew();
-                    JObject response = api.GetResults(out long size, useCompression, url, resultLimit, currentResult);
+                    JObject response = api.GetResults(out long size, useCompression, url, resultLimit, currentResult, eTag);
                     watch.Stop();
                     totalResponseTime += watch.ElapsedMilliseconds;
                     totalResponseSize += size;
                     currentResult += resultLimit;
 
                     // Check if request is ok.
+                    if (useEtags && response == null)
+                    {
+                        IList<JToken> charactersFromFile = LoadJsonCharacters(i);
+                        characters.AddRange(charactersFromFile);
+                        continue;
+                    }
                     int code = (int)response["code"];
+                    string newEtag = response["etag"].Value<string>();
+                    if (useEtags)
+                    {
+                        if (eTags.ElementAtOrDefault(i) != null) eTags[i] = newEtag;
+                        else eTags.Add(newEtag);
+                        UpdateEtag(eTags);
+                    }
                     if (code != 200) throw new InvalidOperationException(response["status"].ToString());
-
                     IList<JToken> results = response["data"]["results"].ToList();
                     if (results.Count < 1) break; // This means we've reached the end of the results list.
                     characters.AddRange(results);
+                    SaveCharacters(results, i);
                 }
 
                 IDictionary<JToken, int> charactersDict = new Dictionary<JToken, int>();
@@ -308,13 +332,70 @@ namespace MarvelApi
                                 ""average_response_size"": {totalResponseSize / totalRequests}
                             }}
                 }}");
-
                 Console.WriteLine(json);
             }
             catch (Exception ex)
             {
                 Log.Fatal("Could not display top ten characters.", ex);
                 ShowTerminateMessage(1, "Could not get/display top ten characters.");
+            }
+        }
+
+        private static IList<JToken> LoadJsonCharacters(int page)
+        {
+            IList<JToken> characters = new List<JToken>();
+
+            try
+            {
+                string path = $@"{AppDomain.CurrentDomain.BaseDirectory}\Resources\TopTenCharactersJson-{page}.json";
+                if (!File.Exists(path))
+                {
+                    Log.Warn($"path doesn't exist: {path}");
+                    return characters;
+                }
+                string charactersString = File.ReadAllText(path);
+                characters = JObject.Parse(charactersString)["characters"].ToList();
+            }
+            catch (ConfigurationErrorsException ex)
+            {
+                Log.Fatal("Could not add/update characters.", ex);
+                throw;
+            }
+            return characters;
+        }
+
+        private static void SaveCharacters(IList<JToken> characters, int page)
+        {
+            try
+            {
+                JObject json = JObject.Parse($@"
+                {{
+                    characters: {JToken.FromObject(characters)}
+                }}");
+
+                string path = $@"{AppDomain.CurrentDomain.BaseDirectory}\Resources\TopTenCharactersJson-{page}.json";
+                if (File.Exists(path)) File.Delete(path);
+                File.AppendAllText(path, json.ToString());
+            }
+            catch (ConfigurationErrorsException ex)
+            {
+                Log.Fatal("Could not add/update characters.", ex);
+                throw;
+            }
+        }
+
+        public static void UpdateEtag(List<string> eTags)
+        {
+            try
+            {
+                string path = $@"{AppDomain.CurrentDomain.BaseDirectory}\Resources\TopTenCharactersEtags.txt";
+                if (File.Exists(path)) File.Delete(path);
+                File.WriteAllLines(path, eTags);
+            }
+            catch (ConfigurationErrorsException ex)
+            {
+                Log.Fatal("Could not add/update ETags.", ex);
+                throw;
             }
         }
 
