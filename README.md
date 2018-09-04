@@ -51,6 +51,7 @@ Argument | Output | Format
 ## Limitations
 - Marvel's API can only be requested 3000 times a day due to limitations on free developer accounts.
 - Be aware that every Google Translate API call will use your free credit - keep an eye on this.
+- If using Etags (caching) - ensure that your program has read/write permissions on the directory it is deployed in, in order for this to work.
 - Getting single character responses do not work for characters classed as teams, such as `X-Men`.
 - Some text may not translate to your desired language due to limitations on Google's API to interpret certain words if they are connected, such as `Spider-Sense`.
 - Error logs do not include invalid arguments as these are displayed on the console directly.
