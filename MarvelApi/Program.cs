@@ -275,24 +275,28 @@ namespace MarvelApi
                     totalResponseSize += size;
                     currentResult += resultLimit;
 
-                    // Check if request is ok.
+                    // If the Etag exists and is the same as cache, load this and move on.
                     if (useEtags && response == null)
                     {
                         IList<JToken> charactersFromFile = LoadJsonCharacters(i);
                         characters.AddRange(charactersFromFile);
                         continue;
                     }
+
+                    // Check if request is ok.
                     int code = (int)response["code"];
+                    if (code != 200) throw new InvalidOperationException(response["status"].ToString());
+                    IList<JToken> results = response["data"]["results"].ToList();
+                    if (results.Count < 1) break; // This means we've reached the end of the results list.
+
                     string newEtag = response["etag"].Value<string>();
                     if (useEtags)
                     {
+                        // Save the ETag to file.
                         if (eTags.ElementAtOrDefault(i) != null) eTags[i] = newEtag;
                         else eTags.Add(newEtag);
                         UpdateEtag(eTags);
                     }
-                    if (code != 200) throw new InvalidOperationException(response["status"].ToString());
-                    IList<JToken> results = response["data"]["results"].ToList();
-                    if (results.Count < 1) break; // This means we've reached the end of the results list.
                     characters.AddRange(results);
                     SaveCharacters(results, i);
                 }
