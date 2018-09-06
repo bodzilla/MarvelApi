@@ -23,7 +23,7 @@ namespace MarvelApi
 
         private static void Main(string[] args)
         {
-            // Decrypt API key from config.
+            // Get API key from config.
             try
             {
                 _marvelApiPublicKey = ConfigurationManager.AppSettings["MarvelApiPublicKey"];
